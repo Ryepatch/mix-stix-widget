@@ -5,34 +5,34 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Mix Stix Scorecard Widget</title>
 
-  <!-- Tailwind v4 CDN (instant JIT) -->
-  <script src="https://cdn.tailwindcss.com/4.1.3"></script>
+  <!-- Tailwind CDN (v3) -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React & ReactDOM (UMD builds) -->
+  <!-- React & ReactDOM (UMD) -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-  <!-- Supabase UMD -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.7/dist/umd/supabase-js.min.js"></script>
+  <!-- Supabase (UMD → window.supabase) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase-js.min.js"></script>
 
-  <!-- Babel for in-browser JSX transform -->
+  <!-- Babel (in-browser JSX) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800">
   <div id="root" class="p-4 mx-auto max-w-5xl"></div>
 
-  <script type="text/babel">
-    /********************  ENV (fill in)  ********************/
+  <!-- Main widget script -->
+  <script type="text/babel" data-presets="react">
+    /************  ENV  (replace with your real anon key)  ************/
     const SUPABASE_URL  = 'https://edxawfscfccebqzofzmq.supabase.co';
-    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'; // <- your anon key
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkeGF3ZnNjZmNjZWJxem9mem1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MjcwMDQsImV4cCI6MjA2NzMwMzAwNH0.BtTU-v-vUikpBY9BmrCyL6ZnU8iN72W1_2rgTVXnkHkTE_YOUR_ANON_KEY_HERE';
     const EVENT_ID      = 'd6a21444-af13-404a-8141-25d32448803e';
     const SLOT_SECRET   = 'q8Pq3TbY6jGvH9K6+FtF7w==';
 
-    /* Supabase client */
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    /************  Supabase boot  ************/
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    /* React hook for auth session */
     function useSession() {
       const [session, setSession] = React.useState(null);
       React.useEffect(() => {
@@ -44,7 +44,6 @@
       return session;
     }
 
-    /* Ensure a scorecard row exists for this user */
     async function ensureCard(eventId, userId) {
       let { data: card } = await supabase
         .from('scorecards')
@@ -64,7 +63,7 @@
       return newCard;
     }
 
-    /********************  Randomizer helpers  ********************/
+    /************  Constants & helpers  ************/
     const initialGolfers = [
       'Adam Kondra','Bruce Kristinson','Evan Koppa','Cam Bibby-Fox',
       'Jona Spence','Vitaly K','Taylor Campbell','Ryan Andrews'
@@ -74,13 +73,13 @@
     function mulberry32(a){return()=>{let t=(a+=0x6d2b79f5);t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
     function shuffle(arr,rng){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
-    /********************  Main component  ********************/
+    /************  React component  ************/
     function App() {
-      /* Auth */
+      /* session */
       const session = useSession();
       const user    = session?.user;
 
-      /* Randomizer state */
+      /* randomizer state */
       const [seed, setSeed]     = React.useState(null);
       const [deck, setDeck]     = React.useState([]);
       const [slots, setSlots]   = React.useState(Array(18).fill(null));
@@ -88,7 +87,7 @@
       const [isLocked, setLock] = React.useState(false);
       const drawStarted         = React.useMemo(() => slots.some(Boolean), [slots]);
 
-      /* Personal card */
+      /* personal scorecard */
       const [card, setCard] = React.useState(null);
       React.useEffect(() => {
         if (!user) { setCard(null); return; }
@@ -102,7 +101,7 @@
         return () => supabase.removeChannel(ch);
       }, [user]);
 
-      /* Deck helpers */
+      /* deck helpers */
       const initDeck = React.useCallback(() => {
         const s = Date.now();
         const rng = mulberry32(s);
@@ -116,12 +115,12 @@
         setDeck(rest); return g;
       }, [deck, initDeck]);
 
-      /* Randomizer actions */
+      /* randomizer handlers */
       const randNext = () => {
         if (isLocked || nextHole >= 18) return;
         const g = drawGolfer();
         setSlots(p => { const c=[...p]; c[nextHole] = { hole:nextHole+1, golfer:g, strokes:null }; return c; });
-        setNext(h => h + 1);
+        setNext(h => h+1);
       };
       const randAll  = () => {
         if (isLocked || drawStarted) return;
@@ -130,7 +129,7 @@
         setDeck(d.slice(18)); setNext(18);
       };
 
-      /* Stroke entry */
+      /* stroke entry */
       const editStroke = async (idx,val) => {
         if (!card || card.locked) return;
         const n = parseInt(val,10); if (isNaN(n)) return;
@@ -139,7 +138,7 @@
         await supabase.from('scorecards').update({ holes }).eq('id', card.id);
       };
 
-      /* Realtime “all cards” */
+      /* all cards realtime */
       const [allCards, setAllCards] = React.useState([]);
       React.useEffect(() => {
         supabase.from('scorecards')
@@ -152,7 +151,7 @@
               { event:'*', schema:'public', table:'scorecards', filter:`event_id=eq.${EVENT_ID}` },
               p => setAllCards(l => {
                 const i=l.findIndex(c=>c.id===p.new.id);
-                if(i===-1) return [...l,p.new];
+                if (i===-1) return [...l,p.new];
                 const c=[...l]; c[i]=p.new; return c;
               }))
           .subscribe();
@@ -161,10 +160,10 @@
 
       const total = card ? Object.values(card.holes).reduce((s,v)=>s+(v||0),0)||'--' : '--';
 
-      /****************  JSX  ****************/
+      /* JSX */
       return (
         <div className="space-y-8">
-          {/* Header / Auth */}
+          {/* header */}
           <div className="flex items-center justify-between bg-white shadow p-3 rounded-2xl">
             <h1 className="text-emerald-600 text-xl font-bold">Twlv Stix • Scorecards</h1>
             <button
@@ -178,7 +177,7 @@
             >{user ? 'Log out' : 'Log in'}</button>
           </div>
 
-          {/* Randomizer */}
+          {/* randomizer */}
           <div className="bg-white shadow rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-3 text-center">Hole Randomizer</h2>
             <div className="flex flex-wrap gap-2 justify-center mb-4">
@@ -190,53 +189,62 @@
                       onClick={()=>setLock(true)} disabled={isLocked||nextHole<18}>Lock Card</button>
             </div>
             <table className="w-full text-sm mb-4">
-              <thead className="bg-slate-100 sticky top-0"><tr><th className="p-2">Hole</th><th className="p-2">Golfer</th></tr></thead>
-              <tbody>{HOLES.map((h,i)=>(
-                <tr key={h} className="border-b">
-                  <td className="p-2 font-medium">{h}</td>
-                  <td className="p-2">{slots[i]?.golfer??'--'}</td>
-                </tr>
-              ))}</tbody>
+              <thead className="bg-slate-100 sticky top-0">
+                <tr><th className="p-2">Hole</th><th className="p-2">Golfer</th></tr>
+              </thead>
+              <tbody>
+                {HOLES.map((h,i)=>(
+                  <tr key={h} className="border-b">
+                    <td className="p-2 font-medium">{h}</td>
+                    <td className="p-2">{slots[i]?.golfer??'--'}</td>
+                  </tr>
+                ))}
+              </tbody>
             </table>
-            {seed && <p className="text-xs text-center text-slate-500">Seed : <span className="font-mono">{seed}</span></p>}
+            {seed && (
+              <p className="text-xs text-center text-slate-500">Seed : <span className="font-mono">{seed}</span></p>
+            )}
           </div>
 
-          {/* Personal card */}
+          {/* personal card */}
           {user && card && (
             <div className="bg-white shadow rounded-2xl p-6">
               <h2 className="text-lg font-semibold mb-4 text-center">Your Scorecard</h2>
               <table className="w-full text-sm mb-4">
-                <thead className="bg-slate-100"><tr><th className="p-2">Hole</th><th className="p-2">Strokes</th></tr></thead>
-                <tbody>{HOLES.map((h,i)=>(
-                  <tr key={h} className="border-b">
-                    <td className="p-2 font-medium">{h}</td>
-                    <td className="p-2">
-                      {card.locked ? card.holes[h]??'--' : (
-                        <input
-                          type="number" min="1"
-                          className="w-16 border rounded p-1 text-center"
-                          value={card.holes[h]??''}
-                          onChange={e=>editStroke(i,e.target.value)}
-                        />)}
-                    </td>
-                  </tr>
-                ))}</tbody>
+                <thead className="bg-slate-100">
+                  <tr><th className="p-2">Hole</th><th className="p-2">Strokes</th></tr>
+                </thead>
+                <tbody>
+                  {HOLES.map((h,i)=>(
+                    <tr key={h} className="border-b">
+                      <td className="p-2 font-medium">{h}</td>
+                      <td className="p-2">
+                        {card.locked ? card.holes[h]??'--' : (
+                          <input
+                            type="number"
+                            min="1"
+                            className="w-16 border rounded p-1 text-center"
+                            value={card.holes[h]??''}
+                            onChange={e=>editStroke(i,e.target.value)}
+                          />)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
               </table>
-              <div className="text-center font-bold text-xl">Total 
-                <span className="">{total}</span>
-              </div>
+              <div className="text-center font-bold text-xl">Total {total}</div>
               {!card.locked && (
                 <div className="text-center mt-4">
-                  <button className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl"
-                          onClick={async()=>{await supabase.from('scorecards').update({locked:true}).eq('id',card.id);setCard(c=>({...c,locked:true}));}}>
-                    Lock My Card
-                  </button>
+                  <button
+                    className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-xl"
+                    onClick={async()=>{await supabase.from('scorecards').update({locked:true}).eq('id',card.id);setCard(c=>({...c,locked:true}));}}
+                  >Lock My Card</button>
                 </div>
               )}
             </div>
           )}
 
-          {/* All cards */}
+          {/* all cards */}
           <div className="bg-white shadow rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-4 text-center">All Players</h2>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -245,7 +253,9 @@
                   <h3 className="font-semibold mb-2 truncate">{c.user_id}</h3>
                   <div className="text-sm grid grid-cols-9 gap-1">
                     {HOLES.map(h=>(
-                      <span key={h} className="text-center border rounded p-1 bg-slate-50">{c.holes[h]??'--'}</span>
+                      <span key={h} className="text-center border rounded p-1 bg-slate-50">
+                        {c.holes[h]??'--'}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -256,8 +266,8 @@
       );
     }
 
+    /* Mount React app */
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
 </html>
-

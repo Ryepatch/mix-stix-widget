@@ -8,29 +8,28 @@
   <!-- Tailwind CDN (v3) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- React & ReactDOM (UMD) -->
+  <!-- React & ReactDOM UMD -->
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
 
-  <!-- Supabase (UMD → window.supabase) -->
+  <!-- Supabase UMD (global `supabase`) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase-js.min.js"></script>
 
-  <!-- Babel (in-browser JSX) -->
+  <!-- Babel for in-browser JSX (React preset) -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800">
   <div id="root" class="p-4 mx-auto max-w-5xl"></div>
 
-  <!-- Main widget script -->
   <script type="text/babel" data-presets="react">
-    /************  ENV  (replace with your real anon key)  ************/
+    /* ---------- ENV (fill in anon key) ---------- */
     const SUPABASE_URL  = 'https://edxawfscfccebqzofzmq.supabase.co';
-    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkeGF3ZnNjZmNjZWJxem9mem1xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE3MjcwMDQsImV4cCI6MjA2NzMwMzAwNH0.BtTU-v-vUikpBY9BmrCyL6ZnU8iN72W1_2rgTVXnkHkTE_YOUR_ANON_KEY_HERE';
+    const SUPABASE_ANON = 'PASTE_YOUR_ANON_KEY_HERE';
     const EVENT_ID      = 'd6a21444-af13-404a-8141-25d32448803e';
     const SLOT_SECRET   = 'q8Pq3TbY6jGvH9K6+FtF7w==';
 
-    /************  Supabase boot  ************/
+    /* ---------- Supabase ---------- */
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
     function useSession() {
@@ -63,7 +62,7 @@
       return newCard;
     }
 
-    /************  Constants & helpers  ************/
+    /* ---------- Constants & helpers ---------- */
     const initialGolfers = [
       'Adam Kondra','Bruce Kristinson','Evan Koppa','Cam Bibby-Fox',
       'Jona Spence','Vitaly K','Taylor Campbell','Ryan Andrews'
@@ -73,13 +72,12 @@
     function mulberry32(a){return()=>{let t=(a+=0x6d2b79f5);t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
     function shuffle(arr,rng){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
-    /************  React component  ************/
+    /* ---------- Main React component ---------- */
     function App() {
-      /* session */
       const session = useSession();
       const user    = session?.user;
 
-      /* randomizer state */
+      /* Randomizer state */
       const [seed, setSeed]     = React.useState(null);
       const [deck, setDeck]     = React.useState([]);
       const [slots, setSlots]   = React.useState(Array(18).fill(null));
@@ -87,7 +85,7 @@
       const [isLocked, setLock] = React.useState(false);
       const drawStarted         = React.useMemo(() => slots.some(Boolean), [slots]);
 
-      /* personal scorecard */
+      /* Personal scorecard */
       const [card, setCard] = React.useState(null);
       React.useEffect(() => {
         if (!user) { setCard(null); return; }
@@ -101,7 +99,7 @@
         return () => supabase.removeChannel(ch);
       }, [user]);
 
-      /* deck helpers */
+      /* Deck helpers */
       const initDeck = React.useCallback(() => {
         const s = Date.now();
         const rng = mulberry32(s);
@@ -115,7 +113,7 @@
         setDeck(rest); return g;
       }, [deck, initDeck]);
 
-      /* randomizer handlers */
+      /* Randomizer actions */
       const randNext = () => {
         if (isLocked || nextHole >= 18) return;
         const g = drawGolfer();
@@ -129,7 +127,7 @@
         setDeck(d.slice(18)); setNext(18);
       };
 
-      /* stroke entry */
+      /* Stroke entry */
       const editStroke = async (idx,val) => {
         if (!card || card.locked) return;
         const n = parseInt(val,10); if (isNaN(n)) return;
@@ -138,7 +136,7 @@
         await supabase.from('scorecards').update({ holes }).eq('id', card.id);
       };
 
-      /* all cards realtime */
+      /* All cards realtime */
       const [allCards, setAllCards] = React.useState([]);
       React.useEffect(() => {
         supabase.from('scorecards')
@@ -160,10 +158,9 @@
 
       const total = card ? Object.values(card.holes).reduce((s,v)=>s+(v||0),0)||'--' : '--';
 
-      /* JSX */
       return (
         <div className="space-y-8">
-          {/* header */}
+          {/* Header */}
           <div className="flex items-center justify-between bg-white shadow p-3 rounded-2xl">
             <h1 className="text-emerald-600 text-xl font-bold">Twlv Stix • Scorecards</h1>
             <button
@@ -177,7 +174,7 @@
             >{user ? 'Log out' : 'Log in'}</button>
           </div>
 
-          {/* randomizer */}
+          {/* Randomizer */}
           <div className="bg-white shadow rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-3 text-center">Hole Randomizer</h2>
             <div className="flex flex-wrap gap-2 justify-center mb-4">
@@ -189,48 +186,36 @@
                       onClick={()=>setLock(true)} disabled={isLocked||nextHole<18}>Lock Card</button>
             </div>
             <table className="w-full text-sm mb-4">
-              <thead className="bg-slate-100 sticky top-0">
-                <tr><th className="p-2">Hole</th><th className="p-2">Golfer</th></tr>
-              </thead>
-              <tbody>
-                {HOLES.map((h,i)=>(
-                  <tr key={h} className="border-b">
-                    <td className="p-2 font-medium">{h}</td>
-                    <td className="p-2">{slots[i]?.golfer??'--'}</td>
-                  </tr>
-                ))}
-              </tbody>
+              <thead className="bg-slate-100 sticky top-0"><tr><th className="p-2">Hole</th><th className="p-2">Golfer</th></tr></thead>
+              <tbody>{HOLES.map((h,i)=>(
+                <tr key={h} className="border-b">
+                  <td className="p-2 font-medium">{h}</td>
+                  <td className="p-2">{slots[i]?.golfer??'--'}</td>
+                </tr>
+              ))}</tbody>
             </table>
-            {seed && (
-              <p className="text-xs text-center text-slate-500">Seed : <span className="font-mono">{seed}</span></p>
-            )}
+            {seed && <p className="text-xs text-center text-slate-500">Seed : <span className="font-mono">{seed}</span></p>}
           </div>
 
-          {/* personal card */}
+          {/* Personal card */}
           {user && card && (
             <div className="bg-white shadow rounded-2xl p-6">
               <h2 className="text-lg font-semibold mb-4 text-center">Your Scorecard</h2>
               <table className="w-full text-sm mb-4">
-                <thead className="bg-slate-100">
-                  <tr><th className="p-2">Hole</th><th className="p-2">Strokes</th></tr>
-                </thead>
-                <tbody>
-                  {HOLES.map((h,i)=>(
-                    <tr key={h} className="border-b">
-                      <td className="p-2 font-medium">{h}</td>
-                      <td className="p-2">
-                        {card.locked ? card.holes[h]??'--' : (
-                          <input
-                            type="number"
-                            min="1"
-                            className="w-16 border rounded p-1 text-center"
-                            value={card.holes[h]??''}
-                            onChange={e=>editStroke(i,e.target.value)}
-                          />)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                <thead className="bg-slate-100"><tr><th className="p-2">Hole</th><th className="p-2">Strokes</th></tr></thead>
+                <tbody>{HOLES.map((h,i)=>(
+                  <tr key={h} className="border-b">
+                    <td className="p-2 font-medium">{h}</td>
+                    <td className="p-2">
+                      {card.locked ? card.holes[h]??'--' : (
+                        <input type="number" min="1"
+                               className="w-16 border rounded p-1 text-center"
+                               value={card.holes[h]??''}
+                               onChange={e=>editStroke(i,e.target.value)} />
+                      )}
+                    </td>
+                  </tr>
+                ))}</tbody>
               </table>
               <div className="text-center font-bold text-xl">Total {total}</div>
               {!card.locked && (
@@ -244,7 +229,7 @@
             </div>
           )}
 
-          {/* all cards */}
+          {/* All cards */}
           <div className="bg-white shadow rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-4 text-center">All Players</h2>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -266,7 +251,6 @@
       );
     }
 
-    /* Mount React app */
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
   </script>
 </body>
